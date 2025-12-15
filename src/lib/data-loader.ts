@@ -18,15 +18,29 @@ export interface QuestionData {
 function parseAnswers(raw: string): Map<number, string> {
 	const lines = raw.split('\n').filter((line) => line.trim());
 	const map = new Map<number, string>();
+	let currentId: number | null = null;
+	let currentQuestion = '';
 
 	for (const line of lines) {
 		// Format: "1.Question text" or "1. Question text"
-		const match = line.match(/^(\d+)\.\s*(.+)$/);
+		const match = line.match(/^[\s*]*(\d+)\.\s*(.+)$/);
 		if (match) {
-			const id = parseInt(match[1], 10);
-			const question = match[2].trim();
-			map.set(id, question);
+			// Save previous question if exists
+			if (currentId !== null && currentQuestion) {
+				map.set(currentId, currentQuestion.trim());
+			}
+			
+			currentId = parseInt(match[1], 10);
+			currentQuestion = match[2].trim();
+		} else if (currentId !== null) {
+			// Continue multiline question
+			currentQuestion += ' ' + line.trim();
 		}
+	}
+
+	// Save last question
+	if (currentId !== null && currentQuestion) {
+		map.set(currentId, currentQuestion.trim());
 	}
 
 	return map;
@@ -68,24 +82,39 @@ function parseAnswerOptions(
 function parseExplanations(raw: string): Map<number, string> {
 	const lines = raw.split('\n').filter((line) => line.trim());
 	const map = new Map<number, string>();
+	let currentId: number | null = null;
+	let currentText = '';
 
 	for (const line of lines) {
-		// Format: "1. Question? Explanation text"
-		const match = line.match(/^(\d+)\.\s*(.+)$/);
+		// Format: "1. Question? Explanation text" or "**1. Question?..."
+		const match = line.match(/^[\s*]*(\d+)\.\s*(.+)$/);
 		if (match) {
-			const id = parseInt(match[1], 10);
-			const fullText = match[2].trim();
-
-			// Find the first question mark and take everything after it
-			const questionMarkIndex = fullText.indexOf('?');
-			if (questionMarkIndex !== -1) {
-				const explanation = fullText.substring(questionMarkIndex + 1).trim();
-				map.set(id, explanation);
-			} else {
-				// If no question mark, just use the whole text as explanation
-				map.set(id, fullText);
+			// Save previous explanation if exists
+			if (currentId !== null && currentText) {
+				const questionMarkIndex = currentText.indexOf('?');
+				let explanation = currentText;
+				if (questionMarkIndex !== -1) {
+					explanation = currentText.substring(questionMarkIndex + 1).trim();
+				}
+				map.set(currentId, explanation);
 			}
+			
+			currentId = parseInt(match[1], 10);
+			currentText = match[2].trim();
+		} else if (currentId !== null) {
+			// Continue multiline explanation
+			currentText += ' ' + line.trim();
 		}
+	}
+
+	// Save last explanation
+	if (currentId !== null && currentText) {
+		const questionMarkIndex = currentText.indexOf('?');
+		let explanation = currentText;
+		if (questionMarkIndex !== -1) {
+			explanation = currentText.substring(questionMarkIndex + 1).trim();
+		}
+		map.set(currentId, explanation);
 	}
 
 	return map;
