@@ -6,6 +6,8 @@
 	const selected = $derived(quizStore.selected);
 	const stats = $derived(quizStore.statistics);
 	const accuracy = $derived(quizStore.accuracy);
+	const isReviewMode = $derived(quizStore.isReviewMode);
+	const incorrectCount = $derived(quizStore.incorrectCount);
 
 	function handleAnswer(option: 'A' | 'B' | 'C' | 'D') {
 		quizStore.answerQuestion(option);
@@ -63,8 +65,15 @@
 
 		{#if question}
 			<!-- Progress Indicator -->
-			<div class="mb-6 text-zinc-400 text-sm">
-				Вопрос {quizStore.currentQuestionNumber}/{quizStore.totalQuestions}
+			<div class="mb-6 flex items-center justify-between">
+				<div class="text-zinc-400 text-sm">
+					Вопрос {quizStore.currentQuestionNumber}/{quizStore.totalQuestions}
+				</div>
+				{#if isReviewMode}
+					<div class="text-amber-400 text-sm font-medium bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
+						📝 Повторение ({incorrectCount} неправильных)
+					</div>
+				{/if}
 			</div>
 
 			<!-- Question Card -->
@@ -78,7 +87,7 @@
 
 				<!-- Answer Options -->
 				<div class="space-y-3 mb-6">
-					{#each ['A', 'B', 'C', 'D'] as option}
+					{#each question.shuffledKeys as option}
 						<button
 							class={getButtonClass(option)}
 							onclick={() => handleAnswer(option)}
